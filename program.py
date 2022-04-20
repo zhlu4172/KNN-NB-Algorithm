@@ -177,24 +177,60 @@ def classify_nb(training_filename, testing_filename):
   return return_ls
 
 
-def create_new_csv(foldname):
+def create_new_csv(foldname,fold_num):
   ten_folds = open(foldname, "r").readlines()
 
-  new_training_file = open("new_training.csv", "a")
-  new_testing_file = open("new_testing.csv","a")
+  new_training_file = open("new_training.csv", "w")
+  new_testing_file = open("new_testing.csv","w")
   reach_testing_folder = False
   for l in ten_folds:
     if len(l.split()) == 0:
       continue
     # print(l)
-    if "fold10" in l:
+    getting_string = "fold" + str(fold_num)
+    if "fold" in l and reach_testing_folder == True:
+      reach_testing_folder = False
+    if getting_string in l:
       reach_testing_folder = True
     if "fold" not in l and reach_testing_folder == False and len(l) != 0:
       new_training_file.write(l)
     if "fold" not in l and reach_testing_folder == True and len(l) != 0:
       new_testing_file.write(l)
+    
   new_training_file.close()
   new_testing_file.close()
+
+def knn(train_ls, test_ls, k): # knn
+  output = []
+  for current in test_ls:
+    dist_record = []
+    for t in train_ls:
+      record = [t[len(t)-1]] # record the class
+      # calculate distance 
+      dist = 0
+      for j in range(len(current)):
+        dist += np.square(current[j] - t[j])
+      dist = np.sqrt(dist)
+      record.append(dist)
+      dist_record.append(record)
+    # sorted by distance in ascending order
+    dist_record.sort(key=lambda x: x[1]) 
+    # choose the closest k neighbors
+    neighbors = dist_record[:k]
+    # yes - no count
+    y_count = 0
+    n_count = 0
+    for n in neighbors:
+      if n[0].lower() == "yes":
+        y_count += 1
+      else:
+        n_count += 1
+    # output
+    if y_count >= n_count:
+      output.append("yes")
+    else:
+      output.append("no")
+  return output
 
 def test_my_knn(k):
   # train = open(training_filename, "r").readlines()
@@ -204,6 +240,39 @@ def test_my_knn(k):
     l = l.strip().split(",")
     correct.append(l[len(l)-1])
   getting_result = classify_nn("new_training.csv", "final_testing.csv", k)
+
+  # train = open("new_training.csv", "r").readlines()
+  # test = open("final_testing.csv", "r").readlines()
+  
+  # training = []
+  # testing = []
+  
+  # # training input
+  # for l in train:
+  #   append_line = []
+  #   l = l.strip().split(",")
+  #   # append all numbers
+  #   for n in range(0, len(l)-1):
+  #     append_line.append(float(l[n]))
+  #   # append class
+  #   append_line.append(l[len(l)-1])
+  #   # append the entire line
+  #   training.append(append_line)
+    
+  # # testing input
+  # for l in test:
+  #   append_line = []
+  #   l = l.strip().split(",")
+  #   # append all numbers
+  #   for n in l:
+  #     append_line.append(float(n))
+  #   # append the entire line
+  #   testing.append(append_line)
+
+  # getting_result = knn(training, testing, k)
+    
+
+
 
 
   total = len(correct)
@@ -223,6 +292,37 @@ def test_my_nb():
     l = l.strip().split(",")
     correct.append(l[len(l)-1])
   getting_result = classify_nb("new_training.csv", "final_testing.csv")
+
+  # train = open("new_training.csv", "r").readlines()
+  # test = open("final_testing.csv", "r").readlines()
+  
+  # training = []
+  # testing = []
+  
+  # # training input
+  # for l in train:
+  #   append_line = []
+  #   l = l.strip().split(",")
+  #   # append all numbers
+  #   for n in range(0, len(l)-1):
+  #     append_line.append(float(l[n]))
+  #   # append class
+  #   append_line.append(l[len(l)-1])
+  #   # append the entire line
+  #   training.append(append_line)
+    
+  # # testing input
+  # for l in test:
+  #   append_line = []
+  #   l = l.strip().split(",")
+  #   # append all numbers
+  #   for n in l:
+  #     append_line.append(float(n))
+  #   # append the entire line
+  #   testing.append(append_line)
+
+  # getting_result = nb(training, testing)
+
   total = len(correct)
   correct_num = 0
   i = 0
@@ -230,11 +330,13 @@ def test_my_nb():
     if correct[i] == getting_result[i]:
       correct_num += 1
     i += 1
+  print(correct_num)
+  print(total)
   return correct_num/total * 100
 
 def strip_last_para(foldname):
   current_test = open(foldname, "r").readlines()
-  final_testing_file = open("final_testing.csv", "a")
+  final_testing_file = open("final_testing.csv", "w")
   for l in current_test:
     if "yes" in l:
       new_adding = l.replace(",yes","")
@@ -243,12 +345,94 @@ def strip_last_para(foldname):
     final_testing_file.write(new_adding)
 
 
+def nb(train_ls, test_ls): # nb
+  output = []
+  # separate into yes and no list
+  y = []
+  n = []
+  for t in train_ls:
+    if t[len(t)-1].lower() == "yes":
+      y.append(t)
+    else:
+      n.append(t)
+  # calcualte P(yes) and P(no)
+  p_yes = len(y) / (len(train_ls))
+  p_no = len(n) / (len(train_ls))
+ 
+  # calculate yes
+  # get all columns
+  y_cols = []
+  for i in range(len(test_ls[0])):
+    col = []
+    for t in y:
+      col.append(t[i])
+    y_cols.append(col)
+  # calculate mean and standard deviation for each column
+  y_mean = []
+  y_sd = []
+  for c in y_cols:
+    y_mean.append(np.mean(c))
+    y_sd.append(np.std(c))
+  # calculate probability density
+  y_probs = []
+  for t in test_ls:
+    mult = p_yes
+    for i in range(len(t)):
+      mult *= 1/(y_sd[i]*np.sqrt(2*np.pi)) * np.exp(-1*np.square(t[i]-y_mean[i])/(2*np.square(y_sd[i])))
+    y_probs.append(mult)
+  # calculate no
+  # get all columns
+  n_cols = []
+  for i in range(len(test_ls[0])):
+    col = []
+    for t in n:
+      col.append(t[i])
+    n_cols.append(col)
+  # calculate mean and standard deviation for each column
+  n_mean = []
+  n_sd = []
+  for c in n_cols:
+    n_mean.append(np.mean(c))
+    n_sd.append(np.std(c))
+  # calculate no probability density
+  n_probs = []
+  for t in test_ls:
+    mult = p_no
+    for i in range(len(t)):
+      mult *= 1/(n_sd[i]*np.sqrt(2*np.pi)) * np.exp(-1*np.square(t[i]-n_mean[i])/(2*np.square(n_sd[i])))
+    n_probs.append(mult)
+  # output
+  for i in range(len(y_probs)):
+    if y_probs[i] >= n_probs[i]:
+      output.append("yes")
+    else:
+      output.append("no")
+  return output
+
 
 if __name__ == '__main__':
     # Example function calls below, you can add your own to test the task6 function
     # print(classify_nb("training.csv","testing.csv"))
-    # create_new_csv("pima-folds.csv")
-    
+    # create_new_csv("pima-folds.csv",1)
     # strip_last_para("new_testing.csv")
-    print(test_my_knn(5))
-    print(test_my_nb())
+    
+    i = 1
+    total_accuracy_knn = 0
+    total_accuracy_nb = 0
+    while i <= 10:
+      create_new_csv("pima-CFS-10folds.csv",i)
+      strip_last_para("new_testing.csv")
+      print(test_my_knn(5))
+      total_accuracy_knn += test_my_knn(1)
+      print(test_my_nb())
+      total_accuracy_nb += test_my_nb()
+      i += 1
+    print(total_accuracy_knn/10)
+    print(total_accuracy_nb/10)
+
+    # print(test_my_knn(5))
+
+    # print(test_my_nb())
+    
+    
+    
